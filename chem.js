@@ -1,6 +1,13 @@
 const Chem = (function() {
     var renderer, container, scene, camera, clock;
     var material, geometry;
+    var bufTarget, bufFeedback;
+
+    const pars = {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBFormat
+    };
 
     var uniforms = {
         u_resolution: {
@@ -31,7 +38,10 @@ const Chem = (function() {
         u_colorRampB: {
             type: "vec3",
             value: new THREE.Vector3(237/255, 170/255, 83/255)
-        }
+        },
+
+        u_feedbackBuf: {}
+
     };
 
     const vsSource = `void main() {
@@ -44,6 +54,9 @@ uniform float u_distort;
 
 uniform vec3 u_colorRampA;
 uniform vec3 u_colorRampB;
+
+uniform sampler2D u_feedbackBuf;
+
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -95,12 +108,12 @@ float snoise(vec2 v)
 
   vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
   m = m*m ;
-  m = m*m ;
+  m = m*m*u_distort ;
 
 // Gradients: 41 points uniformly over a line, mapped onto a diamond.
 // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
 
-  vec3 x = 2.0*u_distort * fract(p * C.www) - 1.0;
+  vec3 x = 2.0 * fract(p * C.www) - 1.0;
   vec3 h = abs(x) - 0.5;
   vec3 ox = floor(x + 0.5);
   vec3 a0 = x - ox;
@@ -117,16 +130,23 @@ float snoise(vec2 v)
 }
 
 void main() {
-vec2 uv = gl_FragCoord.xy/u_resolution;
+float max_res = max(u_resolution.x,u_resolution.y);
+vec2 uv = gl_FragCoord.xy/max_res;
 float noise = snoise((uv+u_offset)*u_scale);
 gl_FragColor = vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
 }`;
 
     const init = function(element) {
+        const ww = window.innerWidth;
+        const hh = window.innerHeight;
+
         container = element;
         renderer = new THREE.WebGLRenderer();
         renderer.setPixelRatio(window.devicePixelRatio);
-        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setSize(ww, hh);
+
+        bufTarget = new THREE.WebGLRenderTarget(ww,hh,pars);
+        bufFeedback = new THREE.WebGLRenderTarget(ww,hh,pars);
 
         container.appendChild(renderer.domElement);
 
@@ -156,10 +176,21 @@ gl_FragColor = vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
     };
 
     const animate = function() {
+        //renderer.setRenderTarget(bufTarget);
         render();
+        //renderer.setRenderTarget(null);
+        //renderer.clear();
+
+        uniforms.u_feedbackBuf.value = bufTarget.texture;
+
+
+        let temp = bufTarget;
+        bufTarget = bufFeedback;
+        bufFeedback = temp;
+
         uniforms.u_offset.value.add(new THREE.Vector2(0.003,0.0));
         //uniforms.u_scale.value += 0.01;
-        uniforms.u_distort.value = Math.sin(clock.getElapsedTime()/20)*3;
+        uniforms.u_distort.value = Math.sin(clock.getElapsedTime())*3;
         requestAnimationFrame(animate);
     };
 
