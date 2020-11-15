@@ -32,15 +32,25 @@ const Chem = (function() {
 
         u_colorRampA: {
             type: "vec3",
-            value: new THREE.Vector3(242/255, 194/255, 221/255)
+            value: new THREE.Vector3(242, 194, 221)
         },
 
         u_colorRampB: {
             type: "vec3",
-            value: new THREE.Vector3(237/255, 170/255, 83/255)
+            value: new THREE.Vector3(237, 195, 83)
         },
 
-        u_feedbackBuf: {}
+        u_colorRampC: {
+            type: "vec3",
+            value: new THREE.Vector3(136, 237, 102)
+        },
+
+        u_feedbackBuf: {},
+
+        u_globalTime: {
+            type: "float",
+            value: "0.0"
+        }
 
     };
 
@@ -52,8 +62,11 @@ uniform vec2 u_offset;
 uniform float u_scale;
 uniform float u_distort;
 
+uniform float u_globalTime;
+
 uniform vec3 u_colorRampA;
 uniform vec3 u_colorRampB;
+uniform vec3 u_colorRampC;
 
 uniform sampler2D u_feedbackBuf;
 
@@ -78,6 +91,15 @@ vec2 mod289(vec2 x) {
 
 vec3 permute(vec3 x) {
   return mod289(((x*34.0)+1.0)*x);
+}
+
+vec3 blendColor(float t) {
+if (t < 0.2) {
+return mix(u_colorRampA,u_colorRampB,t);//,clamp(t,0.,1.));
+}
+else {
+    return mix(u_colorRampB,u_colorRampC,t);//,clamp(t,0.,1.));
+}
 }
 
 float snoise(vec2 v)
@@ -132,13 +154,19 @@ float snoise(vec2 v)
 void main() {
 float max_res = max(u_resolution.x,u_resolution.y);
 vec2 uv = gl_FragCoord.xy/max_res;
-float noise = snoise((uv+u_offset)*u_scale);
-gl_FragColor = vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
+float noise = snoise(uv*snoise((uv+u_offset)*u_scale));
+gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
 }`;
 
     const init = function(element) {
-        const ww = window.innerWidth;
-        const hh = window.innerHeight;
+        var ww = window.innerWidth;
+        var hh = window.innerHeight;
+
+        window.onresize = () => {
+            ww = window.innerWidth;
+            hh = window.innerHeight;
+            renderer.setSize(ww,hh);
+        };
 
         container = element;
         renderer = new THREE.WebGLRenderer();
@@ -188,9 +216,10 @@ gl_FragColor = vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
         bufTarget = bufFeedback;
         bufFeedback = temp;
 
+        uniforms.u_globalTime = clock.getElapsedTime()/1000;
         uniforms.u_offset.value.add(new THREE.Vector2(0.003,0.0));
         //uniforms.u_scale.value += 0.01;
-        uniforms.u_distort.value = Math.sin(clock.getElapsedTime())*3;
+        uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)+clock.getElapsedTime())/10 );
         requestAnimationFrame(animate);
     };
 
