@@ -1,5 +1,5 @@
 const Chem = (function() {
-    var renderer, container, scene, camera;
+    var renderer, container, scene, camera, clock;
     var material, geometry;
 
     var uniforms = {
@@ -16,6 +16,21 @@ const Chem = (function() {
         u_scale: {
             type: "float",
             value: 1.0
+        },
+
+        u_distort: {
+            type: "float",
+            value: 1.0
+        },
+
+        u_colorRampA: {
+            type: "vec3",
+            value: new THREE.Vector3(242/255, 194/255, 221/255)
+        },
+
+        u_colorRampB: {
+            type: "vec3",
+            value: new THREE.Vector3(237/255, 170/255, 83/255)
         }
     };
 
@@ -25,6 +40,10 @@ gl_Position = vec4(position,1.0);
     const fsSource = `uniform vec2 u_resolution;
 uniform vec2 u_offset;
 uniform float u_scale;
+uniform float u_distort;
+
+uniform vec3 u_colorRampA;
+uniform vec3 u_colorRampB;
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -81,7 +100,7 @@ float snoise(vec2 v)
 // Gradients: 41 points uniformly over a line, mapped onto a diamond.
 // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
 
-  vec3 x = 2.0 * fract(p * C.www) - 1.0;
+  vec3 x = 2.0*u_distort * fract(p * C.www) - 1.0;
   vec3 h = abs(x) - 0.5;
   vec3 ox = floor(x + 0.5);
   vec3 a0 = x - ox;
@@ -100,7 +119,7 @@ float snoise(vec2 v)
 void main() {
 vec2 uv = gl_FragCoord.xy/u_resolution;
 float noise = snoise((uv+u_offset)*u_scale);
-gl_FragColor = vec4(noise,noise,noise,1.0);
+gl_FragColor = vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
 }`;
 
     const init = function(element) {
@@ -112,6 +131,8 @@ gl_FragColor = vec4(noise,noise,noise,1.0);
         container.appendChild(renderer.domElement);
 
         scene = new THREE.Scene();
+
+        clock = new THREE.Clock();
 
         camera = new THREE.OrthographicCamera(
             -1, 1, 1,
@@ -136,8 +157,9 @@ gl_FragColor = vec4(noise,noise,noise,1.0);
 
     const animate = function() {
         render();
-        uniforms.u_offset.value.add(new THREE.Vector2(0.1,0.0));
-        uniforms.u_scale.value += 0.01;
+        uniforms.u_offset.value.add(new THREE.Vector2(0.003,0.0));
+        //uniforms.u_scale.value += 0.01;
+        uniforms.u_distort.value = Math.sin(clock.getElapsedTime()/20)*3;
         requestAnimationFrame(animate);
     };
 
