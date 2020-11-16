@@ -1,5 +1,6 @@
 const Chem = (function() {
     var renderer, container, scene, camera, clock;
+    var animFrameID;
     var material, geometry;
     var bufTarget, bufFeedback;
 
@@ -223,17 +224,42 @@ gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorR
         bufFeedback = temp;
 
         uniforms.u_globalTime = clock.getElapsedTime()/1000;
-        uniforms.u_offset.value.add(new THREE.Vector2(0.003,Math.sin(clock.getElapsedTime()/100)*0.02+clock.getElapsedTime()/10000));
+        uniforms.u_offset.value.add(new THREE.Vector2(
+            0.003,
+            Math.sin(clock.getElapsedTime()/100)*0.02 + 0.006)
+                                   );
         //uniforms.u_scale.value += 0.01;
         uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)-clock.getElapsedTime())/3 );
-        requestAnimationFrame(animate);
+        animFrameID = requestAnimationFrame(animate);
     };
 
-
-
-    return function(element) {
-        init(element);
+    const start = function() {
         animate();
     };
+
+    const stop = function() {
+        if (animFrameID)
+            cancelAnimationFrame(animFrameID);
+    };
+
+    const _Chem = function(element, stopped) {
+        init(element);
+        if (typeof stopped !== 'undefined') {
+            if (stopped)
+                start();
+        }
+        else
+            start();
+       // animate();
+    };
+
+    //Add methods to returned inner function
+    _Chem.hello = function() {console.log("hello!");};
+    _Chem.start = start;
+    _Chem.stop = stop;
+
+    return _Chem;//function(element) {
+
+        //this.hello = function() {console.log("hello!")};
 
 })();
