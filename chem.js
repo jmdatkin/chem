@@ -101,8 +101,8 @@ else {
     return mix(u_colorRampB,u_colorRampC,t);//,clamp(t,0.,1.));
 }*/
 
-vec3 color = mix(u_colorRampA,u_colorRampB, smoothstep(0.,0.3,t));
-color = mix(color ,u_colorRampC, smoothstep(0.3,1.,t));
+vec3 color = mix(u_colorRampA,u_colorRampB, smoothstep(0.,0.25,clamp(0.,0.5,t)));
+color = mix(color ,u_colorRampC, smoothstep(0.25,1.,t));
 // color = mix(u_colorRampA,u_colorRampB, smoothstep(0,0.5,t));
 return color;
 }
@@ -159,7 +159,8 @@ float snoise(vec2 v)
 void main() {
 float max_res = max(u_resolution.x,u_resolution.y);
 vec2 uv = gl_FragCoord.xy/max_res;
-float noise = snoise(uv*snoise((uv+u_offset)*u_scale));
+float noise = snoise((uv+u_offset)*u_scale);    //First noise fxn
+noise = snoise(uv*noise*u_distort);                       //Second noise fxn
 gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
 }`;
 
@@ -222,9 +223,9 @@ gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorR
         bufFeedback = temp;
 
         uniforms.u_globalTime = clock.getElapsedTime()/1000;
-        uniforms.u_offset.value.add(new THREE.Vector2(0.003,Math.sin(clock.getElapsedTime())*0.01));
+        uniforms.u_offset.value.add(new THREE.Vector2(0.003,Math.sin(clock.getElapsedTime()/100)*0.02+clock.getElapsedTime()/10000));
         //uniforms.u_scale.value += 0.01;
-        uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)+clock.getElapsedTime())/3 );
+        uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)-clock.getElapsedTime())/3 );
         requestAnimationFrame(animate);
     };
 
