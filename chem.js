@@ -94,12 +94,17 @@ vec3 permute(vec3 x) {
 }
 
 vec3 blendColor(float t) {
-if (t < 0.2) {
+/*if (t < 0.2) {
 return mix(u_colorRampA,u_colorRampB,t);//,clamp(t,0.,1.));
 }
 else {
     return mix(u_colorRampB,u_colorRampC,t);//,clamp(t,0.,1.));
-}
+}*/
+
+vec3 color = mix(u_colorRampA,u_colorRampB, smoothstep(0.,0.5,t));
+color = mix(color ,u_colorRampC, smoothstep(0.5,1.,t));
+// color = mix(u_colorRampA,u_colorRampB, smoothstep(0,0.5,t));
+return color;
 }
 
 float snoise(vec2 v)
