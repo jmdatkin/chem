@@ -37,12 +37,12 @@ const Chem = (function() {
 
         u_colorRampB: {
             type: "vec3",
-            value: new THREE.Vector3(237, 195, 83)
+            value: new THREE.Vector3(255, 212, 176)
         },
 
         u_colorRampC: {
             type: "vec3",
-            value: new THREE.Vector3(136, 237, 102)
+            value: new THREE.Vector3(142, 250, 221)
         },
 
         u_feedbackBuf: {},
@@ -101,8 +101,8 @@ else {
     return mix(u_colorRampB,u_colorRampC,t);//,clamp(t,0.,1.));
 }*/
 
-vec3 color = mix(u_colorRampA,u_colorRampB, smoothstep(0.,0.5,t));
-color = mix(color ,u_colorRampC, smoothstep(0.5,1.,t));
+vec3 color = mix(u_colorRampA,u_colorRampB, smoothstep(0.,0.3,t));
+color = mix(color ,u_colorRampC, smoothstep(0.3,1.,t));
 // color = mix(u_colorRampA,u_colorRampB, smoothstep(0,0.5,t));
 return color;
 }
@@ -222,9 +222,9 @@ gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorR
         bufFeedback = temp;
 
         uniforms.u_globalTime = clock.getElapsedTime()/1000;
-        uniforms.u_offset.value.add(new THREE.Vector2(0.003,0.0));
+        uniforms.u_offset.value.add(new THREE.Vector2(0.003,Math.sin(clock.getElapsedTime())*0.01));
         //uniforms.u_scale.value += 0.01;
-        uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)+clock.getElapsedTime())/10 );
+        uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)+clock.getElapsedTime())/3 );
         requestAnimationFrame(animate);
     };
 
