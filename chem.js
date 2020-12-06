@@ -1,4 +1,4 @@
-const Chem = (function() {
+const Chem = (function () {
     var renderer, container, scene, camera, clock;
     var animFrameID;
     var material, geometry;
@@ -10,50 +10,64 @@ const Chem = (function() {
         format: THREE.RGBFormat
     };
 
-    var uniforms = {
-        u_resolution: {
-            type: "v2",
-            value: new THREE.Vector2(window.innerWidth, window.innerHeight).multiplyScalar(window.devicePixelRatio)
-        },
+    const Uniforms = (function () {
+        var uniforms = {
+            u_resolution: {
+                type: "v2",
+                value: new THREE.Vector2(window.innerWidth, window.innerHeight).multiplyScalar(window.devicePixelRatio)
+            },
 
-        u_offset: {
-            type: "v2",
-            value: new THREE.Vector2(0.0,0.0)
-        },
+            u_offset: {
+                type: "v2",
+                value: new THREE.Vector2(0.0, 0.0)
+            },
 
-        u_scale: {
-            type: "float",
-            value: 1.0
-        },
+            u_scale: {
+                type: "float",
+                value: 1.0
+            },
 
-        u_distort: {
-            type: "float",
-            value: 1.0
-        },
+            u_distort: {
+                type: "float",
+                value: 1.0
+            },
 
-        u_colorRampA: {
-            type: "vec3",
-            value: new THREE.Vector3(242, 194, 221)
-        },
+            u_colorRampA: {
+                type: "vec3",
+                value: new THREE.Vector3(242, 194, 221)
+            },
 
-        u_colorRampB: {
-            type: "vec3",
-            value: new THREE.Vector3(255, 212, 176)
-        },
+            u_colorRampB: {
+                type: "vec3",
+                value: new THREE.Vector3(255, 212, 176)
+            },
 
-        u_colorRampC: {
-            type: "vec3",
-            value: new THREE.Vector3(142, 250, 221)
-        },
+            u_colorRampC: {
+                type: "vec3",
+                value: new THREE.Vector3(142, 250, 221)
+            },
 
-        u_feedbackBuf: {},
+            u_feedbackBuf: {},
 
-        u_globalTime: {
-            type: "float",
-            value: "0.0"
-        }
+            u_globalTime: {
+                type: "float",
+                value: "0.0"
+            }
 
-    };
+        };
+
+        return {
+            get: function(name) {
+                return uniforms[name];
+            },
+            set: function(name,value) {
+                uniforms[name].value = value;
+            },
+            getAll: function() {
+                return uniforms;
+            }
+        };
+    })();
 
     const vsSource = `void main() {
 gl_Position = vec4(position,1.0);
@@ -165,14 +179,14 @@ noise = snoise(uv*noise*u_distort);                       //Second noise fxn
 gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorRampB,noise),1.0);
 }`;
 
-    const init = function(element) {
+    const init = function (element) {
         var ww = window.innerWidth;
         var hh = window.innerHeight;
 
         window.onresize = () => {
             ww = window.innerWidth;
             hh = window.innerHeight;
-            renderer.setSize(ww,hh);
+            renderer.setSize(ww, hh);
         };
 
         container = element;
@@ -180,8 +194,8 @@ gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorR
         renderer.setPixelRatio(window.devicePixelRatio);
         renderer.setSize(ww, hh);
 
-        bufTarget = new THREE.WebGLRenderTarget(ww,hh,pars);
-        bufFeedback = new THREE.WebGLRenderTarget(ww,hh,pars);
+        bufTarget = new THREE.WebGLRenderTarget(ww, hh, pars);
+        bufFeedback = new THREE.WebGLRenderTarget(ww, hh, pars);
 
         container.appendChild(renderer.domElement);
 
@@ -194,55 +208,72 @@ gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorR
             -1, 0, 1
         );
 
-        geometry = new THREE.PlaneBufferGeometry(2,2);
+        geometry = new THREE.PlaneBufferGeometry(2, 2);
 
         material = new THREE.ShaderMaterial({
-            uniforms: uniforms,
+            uniforms: Uniforms.getAll(),//uniforms,
             vertexShader: vsSource,
             fragmentShader: fsSource
         });
 
-        var mesh = new THREE.Mesh(geometry,material);
+        var mesh = new THREE.Mesh(geometry, material);
         scene.add(mesh);
     };
 
-    const render = function() {
-        renderer.render(scene,camera);
+    const render = function () {
+        renderer.render(scene, camera);
     };
 
-    const animate = function() {
+    const animate = function () {
         //renderer.setRenderTarget(bufTarget);
         render();
-        //renderer.setRenderTarget(null);
-        //renderer.clear();
+        // renderer.setRenderTarget(null);
+        // renderer.clear();
 
-        uniforms.u_feedbackBuf.value = bufTarget.texture;
+        //uniforms.u_feedbackBuf.value = bufTarget.texture;
 
+        Uniforms.set("u_feedbackBuf",bufTarget.texture);
+
+
+        Object.keys(Actions.getAll()).forEach((a) => {
+            Actions.get(a)();
+        });
 
         let temp = bufTarget;
         bufTarget = bufFeedback;
         bufFeedback = temp;
-
-        uniforms.u_globalTime = clock.getElapsedTime()/1000;
-        uniforms.u_offset.value.add(new THREE.Vector2(
-            0.003,
-            Math.sin(clock.getElapsedTime()/100)*0.02 + 0.006)
-                                   );
-        //uniforms.u_scale.value += 0.01;
-        uniforms.u_distort.value = Math.sin( ((Math.sin(clock.getElapsedTime())*3)-clock.getElapsedTime())/3 );
+        
+        
         animFrameID = requestAnimationFrame(animate);
     };
 
-    const start = function() {
+    const Actions = (function() {
+        var actions = {};
+
+        return {
+            add: function(name,action) {
+                actions[name] = action;
+            },
+            remove: function(name) {
+                delete actions[name];
+            },
+            get: function(name) {
+                return actions[name];
+            },
+            getAll: () => {return actions}
+        };
+    })();
+
+    const start = function () {
         animate();
     };
 
-    const stop = function() {
+    const stop = function () {
         if (animFrameID)
             cancelAnimationFrame(animFrameID);
     };
 
-    const _Chem = function(element, stopped) {
+    const _Chem = function (element, stopped) {
         init(element);
         if (typeof stopped !== 'undefined') {
             if (stopped)
@@ -250,16 +281,18 @@ gl_FragColor = vec4(blendColor(noise)/255.,1.0);//vec4(mix(u_colorRampA,u_colorR
         }
         else
             start();
-       // animate();
+        // animate();
     };
 
     //Add methods to returned inner function
-    _Chem.hello = function() {console.log("hello!");};
     _Chem.start = start;
     _Chem.stop = stop;
+    _Chem.uniforms = Uniforms;
+    _Chem.actions = Actions;
+    _Chem.time = () => {return clock.getElapsedTime()};
 
     return _Chem;//function(element) {
 
-        //this.hello = function() {console.log("hello!")};
+    //this.hello = function() {console.log("hello!")};
 
 })();
